@@ -21,6 +21,29 @@ Zend MM disabled:
 USE_ZEND_ALLOC=0 valgrind --leak-check=full sapi/cli/php -r 'leak();'
 ```
 
+### Memory tagging on AArch64 Linux
+
+On AArch64 Linux systems with Memory Tagging Extension (MTE) support, glibc can
+tag allocations made through its `malloc` family. To use this for PHP
+allocations, disable Zend MM and enable glibc's memory-tagging tunable before
+starting PHP:
+
+```bash
+GLIBC_TUNABLES=glibc.mem.tagging=3 USE_ZEND_ALLOC=0 sapi/cli/php -r 'exit(0);'
+```
+
+The tunable is specific to glibc. Value `1` enables tagged `malloc`
+allocations; value `3` also requests precise tag-fault reporting where the
+system supports it. A tag violation can terminate the process with `SIGSEGV`.
+The kernel, hardware, and glibc must all support MTE for tagging to take effect.
+See the [glibc tunable documentation](https://www.gnu.org/software/libc/manual/html_node/Memory-Related-Tunables.html)
+and [Linux MTE documentation](https://docs.kernel.org/arch/arm64/memory-tagging-extension.html)
+for details.
+
+This uses the system allocator instead of Zend MM, so Zend MM's memory limits,
+statistics, and allocator-specific debugging are unavailable. Allocations made
+by custom allocators are not covered. This does not provide x86 MTT support.
+
 ### Shared extensions
 
 Since PHP 5.3.11 it is possible to prevent shared extensions from unloading so
